@@ -1,0 +1,27 @@
+# Virtual environment
+venv/
+
+# Model cache
+D:/hf_cache/
+hf_cache/
+
+# Indexed data — too large for GitHub
+data/
+repo/
+repo2/
+repo_indexed/
+
+# Environment secrets
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+src/__pycache__/
+
+# VS Code
+.vscode/
+
+# Streamlit cache
+.streamlit/secrets.toml

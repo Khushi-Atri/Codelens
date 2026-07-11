@@ -1,0 +1,11 @@
+streamlit
+groq
+sentence-transformers
+faiss-cpu
+rank-bm25
+gitpython
+tree-sitter==0.21.3
+tree-sitter-python==0.21.0
+tree-sitter-javascript==0.21.0
+python-dotenv
+torchvision
