@@ -3,10 +3,19 @@ import json
 import re
 from groq import Groq
 from dotenv import load_dotenv
-from src.agent_tools import call_tool, get_tools_description, clear_cache
 
 load_dotenv()
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+# Support both local .env and Streamlit Cloud secrets
+try:
+    import streamlit as st
+    api_key = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
+except Exception:
+    api_key = os.getenv("GROQ_API_KEY")
+
+from src.agent_tools import call_tool, get_tools_description, clear_cache
+
+client = Groq(api_key=api_key)
 
 MAX_STEPS = 8
 
@@ -111,9 +120,28 @@ def parse_llm_response(text: str) -> dict:
         "thought": "Direct text response"
     }
 
+def is_codebase_question(question: str) -> bool:
+    """Returns False if the question is not about the indexed codebase."""
+    out_of_scope = [
+        "suggest", "recommend", "best project", "final year",
+        "what should i", "give me ideas", "career advice",
+        "which language", "teach me", "explain concept",
+        "what is the best", "should i learn"
+    ]
+    q = question.lower()
+    return not any(phrase in q for phrase in out_of_scope)
 
 # ── Main agent loop ───────────────────────────────────────────────────
 def run_agent(question: str, chat_history: list = None) -> dict:
+    # Detect out-of-scope questions early
+    if not is_codebase_question(question):
+        return {
+            "answer": "I can only answer questions about the indexed codebase — things like how specific features work, where functions are defined, what the tech stack is, etc. For general advice or recommendations, I'm not the right tool.",
+            "steps":  [],
+            "sources": []
+        }
+    
+    
     """
     Run the ReAct agent loop.
 
@@ -200,6 +228,10 @@ def run_agent(question: str, chat_history: list = None) -> dict:
                 "thought": thought,
                 "result":  answer
             })
+            if len(steps) >= 3:
+                last_3 = [s.get("tool") for s in steps[-3:] if s["type"] == "tool"]
+                if len(set(last_3)) == 1 and len(last_3) == 3:
+                  break
             return {
                 "answer":  answer,
                 "steps":   steps,

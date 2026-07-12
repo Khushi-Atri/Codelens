@@ -4,12 +4,13 @@ from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
+try:
+    import streamlit as st
+    api_key = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
+except Exception:
+    api_key = os.getenv("GROQ_API_KEY")
 
-# ── We build our own lightweight faithfulness scorer
-# ── using Groq instead of OpenAI (which Ragas defaults to)
-# ── This keeps it completely free
-
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+client = Groq(api_key=api_key)
 
 FAITHFULNESS_PROMPT = """You are a faithfulness evaluator for a RAG system.
 
