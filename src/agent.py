@@ -22,7 +22,11 @@ MAX_STEPS = 8
 
 def _get_model() -> str:
     """Returns the best available model, falls back to smaller on rate limit."""
-    return os.getenv("CODELENS_MODEL", "llama-3.3-70b-versatile")
+    try:
+        import streamlit as st
+        return st.secrets.get("CODELENS_MODEL") or os.getenv("CODELENS_MODEL", "llama-3.3-70b-versatile")
+    except Exception:
+        return os.getenv("CODELENS_MODEL", "llama-3.3-70b-versatile")
 
 
 # ── System prompt ─────────────────────────────────────────────────────
@@ -120,6 +124,7 @@ def parse_llm_response(text: str) -> dict:
         "thought": "Direct text response"
     }
 
+
 def is_codebase_question(question: str) -> bool:
     """Returns False if the question is not about the indexed codebase."""
     out_of_scope = [
@@ -131,17 +136,9 @@ def is_codebase_question(question: str) -> bool:
     q = question.lower()
     return not any(phrase in q for phrase in out_of_scope)
 
+
 # ── Main agent loop ───────────────────────────────────────────────────
 def run_agent(question: str, chat_history: list = None) -> dict:
-    # Detect out-of-scope questions early
-    if not is_codebase_question(question):
-        return {
-            "answer": "I can only answer questions about the indexed codebase — things like how specific features work, where functions are defined, what the tech stack is, etc. For general advice or recommendations, I'm not the right tool.",
-            "steps":  [],
-            "sources": []
-        }
-    
-    
     """
     Run the ReAct agent loop.
 
@@ -155,8 +152,16 @@ def run_agent(question: str, chat_history: list = None) -> dict:
           - steps:   list of step dicts (for the thinking panel UI)
           - sources: list of source chunks used
     """
-    steps   = []
-    sources = []
+    # Detect out-of-scope questions early
+    if not is_codebase_question(question):
+        return {
+            "answer":  "I can only answer questions about the indexed codebase — things like how specific features work, where functions are defined, what the tech stack is, etc. For general advice or recommendations, I'm not the right tool.",
+            "steps":   [],
+            "sources": []
+        }
+
+    steps    = []
+    sources  = []
     messages = []
 
     # Add past conversation for memory (last 2 messages only)
@@ -179,6 +184,12 @@ def run_agent(question: str, chat_history: list = None) -> dict:
 
     # ── Agent loop ────────────────────────────────────────────────────
     for step_num in range(MAX_STEPS):
+
+        # Hard stop — if same tool called 3 times in a row, break
+        if len(steps) >= 3:
+            last_3 = [s.get("tool") for s in steps[-3:] if s["type"] == "tool"]
+            if len(last_3) == 3 and len(set(last_3)) == 1:
+                break
 
         # Ask the LLM what to do next
         try:
@@ -228,10 +239,6 @@ def run_agent(question: str, chat_history: list = None) -> dict:
                 "thought": thought,
                 "result":  answer
             })
-            if len(steps) >= 3:
-                last_3 = [s.get("tool") for s in steps[-3:] if s["type"] == "tool"]
-                if len(set(last_3)) == 1 and len(last_3) == 3:
-                  break
             return {
                 "answer":  answer,
                 "steps":   steps,
@@ -260,7 +267,7 @@ def run_agent(question: str, chat_history: list = None) -> dict:
                 "summary": f"Tool error: {str(e)}"
             }
 
-        # Collect sources from search and function lookup tools
+        # ── Collect sources from all tool types ──
         if tool_name in ("search_code", "get_function"):
             results = tool_result.get("results") or tool_result.get("matches") or []
             for r in results:
@@ -272,6 +279,17 @@ def run_agent(question: str, chat_history: list = None) -> dict:
                     "end_line":   r.get("end_line", 0),
                     "text":       r.get("preview") or r.get("code", "")
                 })
+
+        # ── NEW: also collect sources from get_file ──
+        if tool_name == "get_file" and tool_result.get("content"):
+            sources.append({
+                "filepath":   tool_result.get("filepath", ""),
+                "name":       "file_content",
+                "type":       "file",
+                "start_line": 1,
+                "end_line":   tool_result.get("total_lines", 0),
+                "text":       tool_result.get("content", "")[:800]
+            })
 
         # Update step result
         steps[-1]["result"] = tool_result.get("summary", str(tool_result))
