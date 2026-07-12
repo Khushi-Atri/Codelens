@@ -10,6 +10,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](LICENSE)
 
 <br>
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Streamlit-red?style=flat-square&logo=streamlit)](https://your-url.streamlit.app)
 
 ![CodeLens Landing](assets/landing.png)
 
