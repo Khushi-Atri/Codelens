@@ -16,6 +16,12 @@ FAITHFULNESS_PROMPT = """You are a faithfulness evaluator for a RAG system.
 
 Your job is to check if every claim in the ANSWER is supported by the CONTEXT.
 
+IMPORTANT RULES:
+- Only flag a claim as unsupported if it directly contradicts or adds specific 
+  facts not present in the context (version numbers, dates, counts, names)
+- General descriptions that paraphrase the context are considered supported
+- Do not penalise for reasonable summarisation of retrieved content
+
 CONTEXT (retrieved code snippets):
 {context}
 
@@ -23,14 +29,13 @@ ANSWER to evaluate:
 {answer}
 
 Instructions:
-1. Break the answer into individual claims/statements
-2. For each claim, check if it can be verified from the context
-3. Count: supported_claims and total_claims
+1. Break the answer into individual factual claims
+2. For each claim check if it is supported OR reasonably inferred from context
+3. Count supported_claims and total_claims
 4. Score = supported_claims / total_claims
 
 Respond with ONLY this JSON:
-{{"supported": <number>, "total": <number>, "score": <float 0-1>, "unsupported_claims": ["list any claims not in context"]}}"""
-
+{{"supported": <number>, "total": <number>, "score": <float 0-1>, "unsupported_claims": ["only list claims with specific facts not in context"]}}"""
 
 def score_faithfulness(question: str, answer: str, sources: list[dict]) -> dict:
     """

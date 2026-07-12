@@ -36,7 +36,8 @@ AGENT_SYSTEM_PROMPT = """You are CodeLens, a codebase explorer agent.
 
 ## STRICT RULES — you MUST follow these exactly
 
-RULE 1: You MUST call at least 2 tools before giving a final_answer. No exceptions.
+RULE 1: You MUST call at least 3 tools before giving a final_answer. No exceptions.
+RULE 1b: For questions about tech stack, architecture, or project overview — read the README file using get_file first.
 RULE 2: Your response must ALWAYS be a single JSON object. Nothing else.
 RULE 3: Never answer from memory. Always search the code first.
 RULE 4: Do not assume anything — verify by calling tools.
@@ -320,7 +321,7 @@ def run_agent(question: str, chat_history: list = None) -> dict:
                 "content": "You have reached the maximum number of tool calls. Give your best final answer now based on everything you retrieved so far. Respond with the final_answer JSON."
             }],
             temperature=0.1,
-            max_tokens=1024
+            max_tokens=600
         )
         parsed_final = parse_llm_response(final_response.choices[0].message.content)
         answer = parsed_final.get("answer", final_response.choices[0].message.content)
