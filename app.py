@@ -1,5 +1,5 @@
 import os
-os.environ["HF_HOME"] = "D:\\hf_cache"
+os.environ["HF_HOME"] = os.getenv("HF_HOME", "/tmp/hf_cache")
 
 import streamlit as st
 from src.cloner import clone_repo, collect_files

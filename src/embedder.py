@@ -1,5 +1,5 @@
 import os
-os.environ["HF_HOME"] = "D:\\hf_cache"
+os.environ["HF_HOME"] = os.getenv("HF_HOME", "/tmp/hf_cache")
 
 from sentence_transformers import SentenceTransformer
 import faiss, numpy as np, pickle
